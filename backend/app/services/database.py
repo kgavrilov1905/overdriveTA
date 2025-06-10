@@ -6,20 +6,33 @@ import json
 
 class DatabaseService:
     def __init__(self):
-        supabase_url = os.getenv("SUPABASE_URL")
-        # Try multiple possible environment variable names
-        supabase_key = (os.getenv("SUPABASE_ANON_KEY") or 
-                       os.getenv("SUPABASE_PUBLIC") or 
-                       os.getenv("SUPABASE_KEY"))
-        
-        if not supabase_url or not supabase_key:
-            raise ValueError("Supabase credentials not found in environment variables. Please set SUPABASE_URL and SUPABASE_ANON_KEY (or SUPABASE_PUBLIC)")
-        
-        self.supabase: Client = create_client(supabase_url, supabase_key)
+        self.supabase = None
+        self._initialize_client()
+    
+    def _initialize_client(self):
+        """Initialize Supabase client with proper error handling"""
+        try:
+            supabase_url = os.getenv("SUPABASE_URL")
+            # Try multiple possible environment variable names
+            supabase_key = (os.getenv("SUPABASE_ANON_KEY") or 
+                           os.getenv("SUPABASE_PUBLIC") or 
+                           os.getenv("SUPABASE_KEY"))
+            
+            if not supabase_url or not supabase_key:
+                raise ValueError("Supabase credentials not found in environment variables. Please set SUPABASE_URL and SUPABASE_ANON_KEY (or SUPABASE_PUBLIC)")
+            
+            self.supabase: Client = create_client(supabase_url, supabase_key)
+        except Exception as e:
+            print(f"Warning: Failed to initialize Supabase client: {e}")
+            # In production, the environment variables should be properly set
+            self.supabase = None
     
     # Document operations
     async def create_document(self, title: str, filename: str, file_size: int, content_type: str) -> Dict[str, Any]:
         """Create a new document record"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
+            
         data = {
             "title": title,
             "filename": filename,
@@ -34,16 +47,22 @@ class DatabaseService:
     
     async def get_document(self, document_id: int) -> Optional[Dict[str, Any]]:
         """Get a document by ID"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         result = self.supabase.table("documents").select("*").eq("id", document_id).execute()
         return result.data[0] if result.data else None
     
     async def update_document_processed(self, document_id: int, processed: bool = True):
         """Mark a document as processed"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         result = self.supabase.table("documents").update({"processed": processed}).eq("id", document_id).execute()
         return result.data[0] if result.data else None
-    
+
     async def list_documents(self) -> List[Dict[str, Any]]:
         """List all documents"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         result = self.supabase.table("documents").select("*").order("upload_date", desc=True).execute()
         return result.data or []
     
@@ -51,6 +70,8 @@ class DatabaseService:
     async def create_document_chunk(self, document_id: int, chunk_text: str, chunk_index: int, 
                                   page_number: Optional[int] = None, metadata: Optional[Dict] = None) -> Dict[str, Any]:
         """Create a new document chunk"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         data = {
             "document_id": document_id,
             "chunk_text": chunk_text,
@@ -62,15 +83,19 @@ class DatabaseService:
         
         result = self.supabase.table("document_chunks").insert(data).execute()
         return result.data[0] if result.data else None
-    
+
     async def get_chunks_by_document(self, document_id: int) -> List[Dict[str, Any]]:
         """Get all chunks for a document"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         result = self.supabase.table("document_chunks").select("*").eq("document_id", document_id).order("chunk_index").execute()
         return result.data or []
     
     # Embedding operations
     async def create_embedding(self, chunk_id: int, embedding_vector: List[float], model_name: str) -> Dict[str, Any]:
         """Create an embedding for a chunk"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         data = {
             "chunk_id": chunk_id,
             "embedding_vector": embedding_vector,
@@ -83,6 +108,8 @@ class DatabaseService:
     
     async def similarity_search(self, query_embedding: List[float], limit: int = 5) -> List[Dict[str, Any]]:
         """Perform similarity search using vector embeddings"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         # Using Supabase's vector similarity search
         # This requires pgvector extension to be enabled in Supabase
         rpc_result = self.supabase.rpc(
@@ -98,6 +125,8 @@ class DatabaseService:
     
     async def get_chunk_with_document(self, chunk_id: int) -> Optional[Dict[str, Any]]:
         """Get chunk with associated document information"""
+        if not self.supabase:
+            raise RuntimeError("Database client not initialized. Check environment variables.")
         result = self.supabase.table("document_chunks").select(
             "*, documents(*)"
         ).eq("id", chunk_id).execute()
