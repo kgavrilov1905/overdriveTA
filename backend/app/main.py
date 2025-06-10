@@ -81,6 +81,15 @@ async def debug_env():
         "GOOGLE_API_KEY_LENGTH": len(gem_key) if gem_key else 0,
     }
 
+@app.get("/test-db")
+async def test_db():
+    """Test database connection."""
+    from ..services.database import db_service
+    if db_service and db_service.supabase:
+        return {"status": "success", "message": "Database client initialized."}
+    else:
+        return {"status": "failure", "message": "Database client not initialized."}
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
     """Global exception handler"""
