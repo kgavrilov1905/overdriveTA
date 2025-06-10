@@ -8,6 +8,10 @@ from ..services.embedding_service import embedding_service
 
 logger = logging.getLogger(__name__)
 
+# Ensure db_service is initialized
+if db_service is None:
+    raise RuntimeError("Database service could not be initialized.")
+
 class FileProcessor:
     def __init__(self):
         pass
@@ -100,9 +104,14 @@ class FileProcessor:
             
         except Exception as e:
             logger.error(f"Error processing file {filename}: {str(e)}")
+            # Improved error feedback
+            error_message = f"Failed to process document: {e}"
+            if "Database client not initialized" in str(e):
+                error_message = "Critical: Database connection failed. Please check environment variables and ensure the database is accessible."
+            
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_message,
                 "filename": filename
             }
     
