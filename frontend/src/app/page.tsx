@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, FileText, Brain, BarChart3, Building2, Sparkles, Zap, TrendingUp, Globe } from 'lucide-react';
+import { Send, MessageCircle } from 'lucide-react';
 import { ChatMessage } from '@/components/ChatMessage';
-import { MessageInput } from '@/components/MessageInput';
-import { Header } from '@/components/Header';
 
 interface Message {
   id: string;
@@ -22,35 +20,16 @@ interface Message {
 }
 
 const SAMPLE_QUESTIONS = [
-  {
-    icon: BarChart3,
-    text: "What are the key findings about skills training in Alberta?",
-    gradient: "from-blue-500 to-cyan-500",
-    iconBg: "bg-blue-500"
-  },
-  {
-    icon: Building2,
-    text: "What are Alberta businesses most concerned about?",
-    gradient: "from-emerald-500 to-teal-500",
-    iconBg: "bg-emerald-500"
-  },
-  {
-    icon: FileText,
-    text: "What are Alberta's top priorities for the provincial government?",
-    gradient: "from-purple-500 to-pink-500",
-    iconBg: "bg-purple-500"
-  },
-  {
-    icon: TrendingUp,
-    text: "What percentage of organizations report skills shortages?",
-    gradient: "from-orange-500 to-red-500",
-    iconBg: "bg-orange-500"
-  }
+  "What are the key findings about skills training in Alberta?",
+  "What are Alberta businesses most concerned about?",
+  "What are Alberta's top priorities for the provincial government?",
+  "What percentage of organizations report skills shortages?"
 ];
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -73,9 +52,9 @@ export default function ChatPage() {
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    setInputValue('');
 
     try {
-      // Call our backend API
       const response = await fetch('http://localhost:8000/api/chat/query', {
         method: 'POST',
         headers: {
@@ -120,98 +99,48 @@ export default function ChatPage() {
   };
 
   const handleSampleQuestion = (question: string) => {
-    handleSendMessage(question);
+    setInputValue(question);
   };
 
   return (
-    <div className="min-h-screen animated-bg">
-      <Header />
-      
-      <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
-        {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
+    <div className="flex flex-col h-screen bg-white">
+      {/* Chat Messages Area - Takes remaining space */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-6 py-12">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] space-y-12">
-              {/* Hero Section */}
-              <div className="text-center space-y-8 max-w-4xl fade-in">
-                <div className="relative">
-                  <div className="absolute inset-0 blur-3xl opacity-30">
-                    <div className="w-32 h-32 mx-auto gradient-alberta rounded-full"></div>
-                  </div>
-                  <div className="relative glass-strong p-6 rounded-3xl inline-block shadow-modern">
-                    <div className="gradient-alberta p-4 rounded-2xl">
-                      <Brain className="w-12 h-12 text-white mx-auto" />
-                    </div>
-                  </div>
-                  <div className="absolute -top-2 -right-2">
-                    <Sparkles className="w-8 h-8 text-yellow-400 animate-pulse" />
-                  </div>
-                </div>
-                
+              {/* Modern Hero Section */}
+              <div className="text-center space-y-6 max-w-2xl">
                 <div className="space-y-4">
-                  <h1 className="text-5xl md:text-6xl font-bold gradient-text leading-tight">
-                    Welcome to Alberta Perspectives
+                  <h1 className="text-4xl font-medium text-gray-800 tracking-tight">
+                    Alberta Perspectives
                   </h1>
-                  <p className="text-xl md:text-2xl text-white/80 font-light leading-relaxed">
-                    Your next-generation AI research assistant for 
-                    <span className="gradient-text font-semibold"> Alberta economic insights</span> and 
-                    <span className="gradient-text font-semibold"> business intelligence</span>
+                  <p className="text-xl text-gray-600 font-light leading-relaxed">
+                    AI-powered research assistant for Alberta economic insights
                   </p>
-                </div>
-
-                {/* Features */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                  <div className="glass p-4 rounded-2xl text-center">
-                    <Zap className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
-                    <div className="text-white font-semibold">Lightning Fast</div>
-                    <div className="text-white/60 text-sm">Instant AI responses</div>
-                  </div>
-                  <div className="glass p-4 rounded-2xl text-center">
-                    <Brain className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-                    <div className="text-white font-semibold">AI-Powered</div>
-                    <div className="text-white/60 text-sm">Google Gemini 2.0</div>
-                  </div>
-                  <div className="glass p-4 rounded-2xl text-center">
-                    <Globe className="w-8 h-8 mx-auto mb-2 text-green-400" />
-                    <div className="text-white font-semibold">Alberta Focus</div>
-                    <div className="text-white/60 text-sm">Local expertise</div>
-                  </div>
                 </div>
               </div>
 
-              {/* Sample Questions */}
-              <div className="w-full max-w-4xl space-y-6 slide-up">
-                <div className="text-center">
-                  <h3 className="text-2xl font-bold text-white mb-2">Get Started</h3>
-                  <p className="text-white/70 font-medium">Try one of these popular questions:</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {SAMPLE_QUESTIONS.map((question, index) => {
-                    const IconComponent = question.icon;
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => handleSampleQuestion(question.text)}
-                        className="group glass-strong p-6 text-left rounded-2xl hover:scale-105 transition-all duration-300 shadow-modern hover:shadow-glow"
-                      >
-                        <div className="flex items-start space-x-4">
-                          <div className={`p-3 rounded-xl bg-gradient-to-r ${question.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                            <IconComponent className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-white font-medium leading-relaxed group-hover:text-white/90 transition-colors">
-                              {question.text}
-                            </p>
-                            <div className="mt-2 text-white/50 text-sm">
-                              Click to ask →
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Modern Sample Questions */}
+              <div className="w-full max-w-2xl space-y-3">
+                {SAMPLE_QUESTIONS.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSampleQuestion(question)}
+                    className="group w-full p-4 text-left bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 p-2 bg-gray-100 group-hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                        <MessageCircle className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-800 font-medium leading-relaxed group-hover:text-gray-900 transition-colors duration-200">
+                          {question}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
@@ -220,28 +149,74 @@ export default function ChatPage() {
                 <ChatMessage key={message.id} message={message} />
               ))}
               {isLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="glass-strong px-6 py-4 rounded-2xl flex items-center space-x-4">
-                    <div className="loading-dots">
-                      <div></div>
-                      <div></div>
-                      <div></div>
+                <div className="flex justify-center py-6">
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-6 py-4 shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="loading-dots">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                      </div>
+                      <span className="text-gray-600 font-medium">Analyzing documents...</span>
                     </div>
-                    <span className="text-white/80 font-medium">AI is thinking...</span>
-                    <Brain className="w-5 h-5 text-blue-400 animate-pulse" />
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
+      </div>
 
-        {/* Message Input */}
-        <div className="glass-strong border-t border-white/10 p-6 mx-6 mb-6 rounded-2xl">
-          <MessageInput onSendMessage={handleSendMessage} disabled={isLoading} />
+      {/* Input Section - Fixed at bottom */}
+      <div className="border-t border-gray-100 bg-white">
+        <div className="max-w-3xl mx-auto px-6 py-6">
+          <div className="relative">
+            <div className="relative bg-white border border-gray-300 rounded-3xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div className="flex items-end gap-3 p-4">
+                <div className="flex-1 min-h-[56px] flex items-center">
+                  <textarea
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(inputValue);
+                      }
+                    }}
+                    placeholder="Message Alberta Perspectives..."
+                    className="w-full bg-transparent text-gray-900 placeholder-gray-500 border-none outline-none resize-none text-lg leading-7 min-h-[24px] max-h-48"
+                    rows={1}
+                    style={{ 
+                      height: 'auto',
+                      minHeight: '24px'
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = Math.min(target.scrollHeight, 192) + 'px';
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={() => handleSendMessage(inputValue)}
+                  disabled={!inputValue.trim() || isLoading}
+                  className={`p-3 rounded-full transition-all duration-200 ${
+                    inputValue.trim() && !isLoading
+                      ? 'bg-black hover:bg-gray-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="text-center text-sm text-gray-500 mt-4 font-medium">
+              Alberta Perspectives can make mistakes. Check important info.
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
