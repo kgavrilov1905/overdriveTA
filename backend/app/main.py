@@ -94,11 +94,12 @@ async def test_db():
 async def general_exception_handler(request, exc):
     """Global exception handler"""
     logger.error(f"Unhandled exception: {str(exc)}")
+    # Temporarily force debug output to see the real error
     return JSONResponse(
         status_code=500,
         content={
             "detail": "An unexpected error occurred",
-            "error": str(exc) if os.getenv("DEBUG") == "true" else "Internal server error"
+            "error": str(exc) # Always show the error for debugging
         }
     )
 
