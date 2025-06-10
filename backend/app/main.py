@@ -65,6 +65,22 @@ async def health_check():
         "service": "rag-api"
     }
 
+@app.get("/debug-env")
+async def debug_env():
+    """Debug endpoint to check environment variables."""
+    sup_url = os.getenv("SUPABASE_URL")
+    sup_key = os.getenv("SUPABASE_ANON_KEY")
+    gem_key = os.getenv("GOOGLE_API_KEY")
+
+    return {
+        "SUPABASE_URL_SET": "Yes" if sup_url else "No",
+        "SUPABASE_URL_LENGTH": len(sup_url) if sup_url else 0,
+        "SUPABASE_ANON_KEY_SET": "Yes" if sup_key else "No",
+        "SUPABASE_ANON_KEY_LENGTH": len(sup_key) if sup_key else 0,
+        "GOOGLE_API_KEY_SET": "Yes" if gem_key else "No",
+        "GOOGLE_API_KEY_LENGTH": len(gem_key) if gem_key else 0,
+    }
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
     """Global exception handler"""
