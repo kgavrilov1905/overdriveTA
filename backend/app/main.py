@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
-# Load environment variables from the project root
-env_path = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+# # Load environment variables from the project root
+# env_path = Path(__file__).parent.parent.parent / ".env"
+# load_dotenv(dotenv_path=env_path)
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
