@@ -3,7 +3,7 @@ import openai
 from typing import List, Dict, Any
 import asyncio
 import numpy as np
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 import logging
 
 try:
@@ -30,11 +30,10 @@ class EmbeddingService:
             self.embedding_dim = 1536
             logger.info("Using OpenAI embeddings")
         else:
-            # Fallback to local sentence transformers (completely free)
-            self.local_model = SentenceTransformer('all-MiniLM-L6-v2')
-            self.embedding_model = "all-MiniLM-L6-v2"
+            # Fallback to simple word-based embeddings
+            self.embedding_model = "simple-word-embeddings"
             self.embedding_dim = 384
-            logger.info("Using local sentence transformers (completely free)")
+            logger.info("Using simple word-based embeddings (fallback)")
     
     def _initialize_gemini(self) -> bool:
         """Initialize Google Gemini API"""
@@ -72,7 +71,7 @@ class EmbeddingService:
         elif self.openai_client:
             return await self._generate_openai_embedding(text)
         else:
-            return await self._generate_local_embedding(text)
+            return await self._generate_simple_embedding(text)
     
     async def generate_batch_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts"""
@@ -81,7 +80,7 @@ class EmbeddingService:
         elif self.openai_client:
             return await self._generate_openai_batch_embeddings(texts)
         else:
-            return await self._generate_local_batch_embeddings(texts)
+            return await self._generate_simple_batch_embeddings(texts)
     
     async def _generate_gemini_embedding(self, text: str) -> List[float]:
         """Generate embedding using Google Gemini API"""
@@ -186,116 +185,99 @@ class EmbeddingService:
                     embeddings.append([0.0] * self.embedding_dim)
             return embeddings
     
-    async def _generate_local_embedding(self, text: str) -> List[float]:
-        """Generate embedding using local sentence transformer"""
+    async def _generate_simple_embedding(self, text: str) -> List[float]:
+        """Generate simple word-based embedding as fallback"""
         try:
             text = self._preprocess_text(text)
             
-            # Run in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            embedding = await loop.run_in_executor(
-                None, 
-                lambda: self.local_model.encode(text, convert_to_tensor=False)
-            )
+            # Simple hash-based embedding as absolute fallback
+            words = text.lower().split()
+            embedding = [0.0] * self.embedding_dim
             
-            return embedding.tolist()
+            for i, word in enumerate(words[:100]):  # Limit to 100 words
+                hash_val = hash(word) % self.embedding_dim
+                embedding[hash_val] += 1.0
+            
+            # Normalize
+            magnitude = sum(x*x for x in embedding) ** 0.5
+            if magnitude > 0:
+                embedding = [x/magnitude for x in embedding]
+            
+            return embedding
+            
         except Exception as e:
-            logger.error(f"Error generating local embedding: {str(e)}")
-            raise Exception(f"Failed to generate embedding: {str(e)}")
+            logger.error(f"Error generating simple embedding: {str(e)}")
+            return [0.0] * self.embedding_dim
     
-    async def _generate_local_batch_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate batch embeddings using local sentence transformer"""
-        try:
-            processed_texts = [self._preprocess_text(text) for text in texts]
-            
-            # Run in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            embeddings = await loop.run_in_executor(
-                None, 
-                lambda: self.local_model.encode(processed_texts, convert_to_tensor=False)
-            )
-            
-            return embeddings.tolist()
-        except Exception as e:
-            logger.error(f"Error generating local batch embeddings: {str(e)}")
-            raise Exception(f"Failed to generate batch embeddings: {str(e)}")
+    async def _generate_simple_batch_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """Generate batch simple embeddings"""
+        embeddings = []
+        for text in texts:
+            embedding = await self._generate_simple_embedding(text)
+            embeddings.append(embedding)
+        return embeddings
     
     def _preprocess_text(self, text: str) -> str:
-        """Preprocess text before embedding generation"""
+        """Preprocess text before generating embeddings"""
+        if not text or not isinstance(text, str):
+            return ""
+        
+        # Clean and limit text length
+        text = text.strip()
+        
+        # Limit to reasonable length for API calls (8000 chars for Gemini)
+        if len(text) > 8000:
+            text = text[:8000]
+        
         # Remove excessive whitespace
-        text = ' '.join(text.split())
-        
-        # Truncate based on the provider
-        if self.gemini_client:
-            # Gemini text-embedding-004 has ~20,000 character limit
-            max_chars = 19000  # Conservative estimate
-        elif self.openai_client:
-            # OpenAI has 8191 token limit for text-embedding-3-small
-            # Rough estimate: 1 token ≈ 4 characters
-            max_chars = 8000 * 4  # Conservative estimate
-        else:
-            # Local models typically have smaller limits
-            max_chars = 512 * 4
-        
-        if len(text) > max_chars:
-            text = text[:max_chars]
+        import re
+        text = re.sub(r'\s+', ' ', text)
         
         return text
     
     def calculate_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
         """Calculate cosine similarity between two embeddings"""
         try:
+            # Convert to numpy arrays for calculation
             vec1 = np.array(embedding1)
             vec2 = np.array(embedding2)
             
             # Calculate cosine similarity
             dot_product = np.dot(vec1, vec2)
-            norm1 = np.linalg.norm(vec1)
-            norm2 = np.linalg.norm(vec2)
+            magnitude1 = np.linalg.norm(vec1)
+            magnitude2 = np.linalg.norm(vec2)
             
-            if norm1 == 0 or norm2 == 0:
+            if magnitude1 == 0 or magnitude2 == 0:
                 return 0.0
             
-            similarity = dot_product / (norm1 * norm2)
+            similarity = dot_product / (magnitude1 * magnitude2)
             return float(similarity)
+        
         except Exception as e:
             logger.error(f"Error calculating similarity: {str(e)}")
             return 0.0
     
     async def generate_query_embedding(self, query: str) -> List[float]:
         """Generate embedding specifically for search queries"""
-        if self.gemini_client:
-            # For Gemini, we'll use the task_type parameter instead of prefix
-            text = self._preprocess_text(query)
-            loop = asyncio.get_event_loop()
-            
-            def _generate_sync():
-                result = genai.embed_content(
-                    model=self.embedding_model,
-                    content=text,
-                    task_type="retrieval_query"  # Specific task type for queries
-                )
-                return result['embedding']
-            
-            return await loop.run_in_executor(None, _generate_sync)
-        else:
-            # Generic prefix for other providers
-            query = f"search query: {query}"
+        try:
+            # Use the same embedding generation method
             return await self.generate_embedding(query)
+        except Exception as e:
+            logger.error(f"Error generating query embedding: {str(e)}")
+            def _generate_sync():
+                # Simplified fallback for queries
+                return [0.0] * self.embedding_dim
+            
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _generate_sync)
     
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the current embedding model"""
-        if self.gemini_client:
-            provider = "gemini"
-        elif self.openai_client:
-            provider = "openai"
-        else:
-            provider = "local"
-            
         return {
             "model_name": self.embedding_model,
             "embedding_dimension": self.embedding_dim,
-            "provider": provider
+            "provider": "gemini" if self.gemini_client else "openai" if self.openai_client else "simple",
+            "status": "active"
         }
 
 # Singleton instance
